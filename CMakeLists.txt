@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.16)
-project(SandSlope LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.18)
+project(SandSlope LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -9,16 +9,26 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
 endif()
 
-# Load external dependencies from the cmake/ folder
-include(cmake/Dependencies.cmake)
+# Homebrew dependencies
+find_package(OpenGL REQUIRED)
+find_package(glfw3 REQUIRED)                  
+find_package(glm REQUIRED)
+find_package(libfreenect REQUIRED)
+find_library(FREENECT_LIB      freenect      HINTS ${FREENECT_LIBRARY_DIRS} REQUIRED)
+find_library(FREENECT_SYNC_LIB freenect_sync HINTS ${FREENECT_LIBRARY_DIRS} REQUIRED)
 
-# Generate Executable
-add_executable(SandSlope main.cpp)
-
-target_link_libraries(SandSlope PRIVATE glfw glm::glm)
-
-if(MSVC)
-    target_compile_options(SandSlope PRIVATE /W4)
-else()
-    target_compile_options(SandSlope PRIVATE -Wall -Wextra)
+# Silence Apple's OpenGL deprecation warnings
+if(APPLE)
+    add_compile_definitions(GL_SILENCE_DEPRECATION)
 endif()
+
+# Committed glad
+add_library(glad STATIC external/glad/src/gl.c)
+target_include_directories(glad PUBLIC external/glad/include)
+
+add_executable(SandSlope main.cpp util.cpp)
+target_include_directories(SandSlope PRIVATE ${FREENECT_INCLUDE_DIRS})
+target_link_libraries(SandSlope PRIVATE
+    OpenGL::GL glfw glm::glm glad
+    ${FREENECT_LIB} ${FREENECT_SYNC_LIB})
+
